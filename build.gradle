@@ -1,7 +1,10 @@
 apply plugin: 'java'
+apply plugin:'application'
 
-sourceCompatibility = 1.5
-version = '1.0'
+sourceCompatibility = 1.8
+version = '0.1'
+
+mainClassName = "com.jbake.ui.Frontend"
 
 repositories {
     mavenCentral()
