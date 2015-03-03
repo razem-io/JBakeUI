@@ -6,6 +6,7 @@ import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.io.*;
+import java.util.Locale;
 
 /**
  * Created by julianliebl on 28.02.2015.
@@ -22,6 +23,7 @@ public class Frontend {
     private JButton mDestinationSelectButton;
     private JTextField mJBakeFolderTextField;
     private JButton mJBakeSelectButton;
+    private JButton mSettingsButton;
 
     File mJBakeSourceFolder;
     File mSourceFolder;
@@ -30,6 +32,8 @@ public class Frontend {
     Settings settings;
     
     public Frontend() {
+        Locale.setDefault(Locale.ENGLISH);
+        
         settings = Settings.getInstance();
 
         mJBakeSourceFolder = settings.getJBakeFolderPath();
@@ -63,6 +67,7 @@ public class Frontend {
         mSourceSelectButton.addActionListener(e -> selectSourceFolder());
         mDestinationSelectButton.addActionListener(e -> selectDestinationFolder());
         mJBakeSelectButton.addActionListener(e -> selectJBakeFolder());
+        mSettingsButton.addActionListener(e -> showSettingsDialog());
         
         mSourceFolderTextField.setText(mSourceFolder.getAbsolutePath());
         mDestinationTextField.setText(mDestinationFolder.getAbsolutePath());
@@ -86,7 +91,11 @@ public class Frontend {
             }
         });
     }
-    
+
+    private void showSettingsDialog() {
+        SettingsDialog.open();
+    }
+
     private void clearLog(){
         mLogTextArea.setText("");        
     }
@@ -126,7 +135,7 @@ public class Frontend {
                 mBakeButton.setEnabled(false);
                 clearLog();
                 
-                ProcessBuilder pb = new ProcessBuilder("java", "-jar", mJBakeSourceFolder.getAbsolutePath() + "\\jbake-core.jar", "-b", mSourceFolder.getAbsolutePath(), mDestinationFolder.getAbsolutePath());
+                ProcessBuilder pb = new ProcessBuilder("java", "-jar", "-Duser.country=CA", "-Duser.language=fr",  mJBakeSourceFolder.getAbsolutePath() + "\\jbake-core.jar", "-b", mSourceFolder.getAbsolutePath(), mDestinationFolder.getAbsolutePath());
                 pb.command().stream().forEach(commandPart -> System.out.print(commandPart + " "));
                 System.out.println();
                     pb.directory(mSourceFolder);

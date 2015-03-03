@@ -29,6 +29,7 @@ This project uses gradle. Open a terminal navigate to the root directory of the 
 # Tools & Libraries Used
 
 * [MapDB](http://mapdb.org/)
+* [Guava](https://github.com/google/guava)
 
 # Copyright & License
 
