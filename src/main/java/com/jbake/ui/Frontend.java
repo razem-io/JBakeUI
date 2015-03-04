@@ -1,17 +1,21 @@
 package com.jbake.ui;
 
 
+import org.zeroturnaround.zip.ZipUtil;
+
 import javax.swing.*;
 import javax.swing.text.DefaultCaret;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
  * Created by julianliebl on 28.02.2015.
  */
-public class Frontend {
+public class Frontend extends JFrame{
 
     private JPanel mainPanel;
     private JTextField mSourceFolderTextField;
@@ -32,6 +36,8 @@ public class Frontend {
     Settings settings;
     
     public Frontend() {
+        init();
+        
         Locale.setDefault(Locale.ENGLISH);
         
         settings = Settings.getInstance();
@@ -92,6 +98,16 @@ public class Frontend {
         });
     }
 
+    private void init() {
+        setTitle("JBake UI");
+        setContentPane(mainPanel);
+        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        setIconImage(new ImageIcon(getClass().getResource("jbake-logo.png")).getImage());
+        pack();
+        setSize(new Dimension(800, 600));
+        setVisible(true);
+    }
+
     private void showSettingsDialog() {
         SettingsDialog.open();
     }
@@ -119,7 +135,7 @@ public class Frontend {
     private void selectDestinationFolder(){
         FileChooserUtil.showSelectDirectoryDialog(mainPanel, "Select destination directory:", selectedFile -> {
             mDestinationFolder = selectedFile;
-            mDestinationSelectButton.setText(mDestinationFolder.getAbsolutePath());
+            mDestinationTextField.setText(mDestinationFolder.getAbsolutePath());
             settings.setDestinationFolderPath(mDestinationFolder);
         });
     }
@@ -135,41 +151,68 @@ public class Frontend {
                 mBakeButton.setEnabled(false);
                 clearLog();
                 
-                ProcessBuilder pb = new ProcessBuilder("java", "-jar", "-Duser.country=CA", "-Duser.language=fr",  mJBakeSourceFolder.getAbsolutePath() + "\\jbake-core.jar", "-b", mSourceFolder.getAbsolutePath(), mDestinationFolder.getAbsolutePath());
+                List<String> args = new ArrayList<>();
+                //default
+                args.add("java");
+                args.add("-jar");
+                
+                //locale
+                String localeCountry = Settings.getInstance().getLocaleCountry();
+                if(localeCountry != null) args.add("-Duser.country=" + localeCountry);
+                String localeLanguage = Settings.getInstance().getLocaleLanguage();
+                if(localeLanguage != null) args.add("-Duser.language=" + localeLanguage);
+                
+                //JBake
+                args.add("jbake-core.jar");
+                
+                //folders
+                if(mSourceFolder.list() == null || mSourceFolder.list().length == 0){
+                    //TODO: Implement template selection
+                    
+                    ZipUtil.unpack(
+                            new File(mJBakeSourceFolder.getAbsolutePath() + "\\example_project_freemarker.zip"),
+                            mSourceFolder
+                    );
+                }
+                
+                args.add("-b");
+                args.add(mSourceFolder.getAbsolutePath());
+                args.add(mDestinationFolder.getAbsolutePath());
+                
+                ProcessBuilder pb = new ProcessBuilder(args.toArray(new String[args.size()]));
+                pb.directory(mJBakeSourceFolder);
                 pb.command().stream().forEach(commandPart -> System.out.print(commandPart + " "));
-                System.out.println();
-                    pb.directory(mSourceFolder);
+                
+                try {
+                    Process process = pb.start();
 
-                    try {
-                        Process process = pb.start();
+                    InputStream stdoutStream = process.getInputStream();
+                    InputStream stderrStream = process.getErrorStream();
 
-                        InputStream stdoutStream = process.getInputStream();
-                        InputStream stderrStream = process.getErrorStream();
-
-                        final BufferedReader stdoutReader = new BufferedReader(
-                                new InputStreamReader(stdoutStream));
-                        final BufferedReader stderrReader = new BufferedReader(
-                                new InputStreamReader(stderrStream));                        
-                        
-                        String stdoutLine;
-                        String stderrLine = null;
-                        while ((stdoutLine = stdoutReader.readLine()) != null || (stderrLine = stderrReader.readLine()) != null) {
-                            if(stdoutLine != null){
-                                System.out.println(stdoutLine);
-                            }
-                            if(stderrLine != null){
-                                System.out.println(stderrLine);
-                            }
+                    final BufferedReader stdoutReader = new BufferedReader(
+                            new InputStreamReader(stdoutStream));
+                    final BufferedReader stderrReader = new BufferedReader(
+                            new InputStreamReader(stderrStream));                        
+                    
+                    String stdoutLine;
+                    String stderrLine = null;
+                    while ((stdoutLine = stdoutReader.readLine()) != null || (stderrLine = stderrReader.readLine()) != null) {
+                        if(stdoutLine != null){
+                            System.out.println(stdoutLine);
                         }
+                        if(stderrLine != null){
+                            System.out.println(stderrLine);
+                        }
+                    }
 
-                        stdoutReader.close();
-                        stdoutStream.close();
-                        
-                        stderrReader.close();
-                        stderrStream.close();
+                    stdoutReader.close();
+                    stdoutStream.close();
+                    
+                    stderrReader.close();
+                    stderrStream.close();
 
-                        process.waitFor();
-                        process.destroy();
+                    process.waitFor();
+                    process.destroy();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -260,11 +303,6 @@ public class Frontend {
     }
 
     public static void main(String[] args) {
-        JFrame frame = new JFrame("JBake UI");
-        frame.setContentPane(new Frontend().mainPanel);
-        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        frame.pack();
-        frame.setSize(new Dimension(800, 600));
-        frame.setVisible(true);
+        new Frontend();
     }
 }

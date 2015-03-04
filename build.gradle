@@ -13,4 +13,5 @@ repositories {
 dependencies {
     compile 'org.mapdb:mapdb:1.0.7'
     compile 'com.google.guava:guava:18.0'
+    compile 'org.zeroturnaround:zt-zip:1.8'
 }

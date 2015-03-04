@@ -30,6 +30,7 @@ This project uses gradle. Open a terminal navigate to the root directory of the 
 
 * [MapDB](http://mapdb.org/)
 * [Guava](https://github.com/google/guava)
+* [zt-zip](https://github.com/zeroturnaround/zt-zip)
 
 # Copyright & License
 

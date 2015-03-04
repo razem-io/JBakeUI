@@ -2,7 +2,10 @@ package com.jbake.ui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -11,7 +14,6 @@ import java.util.stream.Stream;
 public class SettingsDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
-    private JButton buttonCancel;
     private JComboBox mCountryComboBox;
     private JComboBox mLanguageComboBox;
 
@@ -22,60 +24,52 @@ public class SettingsDialog extends JDialog {
 
         buttonOK.addActionListener(e -> onOK());
 
-        buttonCancel.addActionListener(e -> onCancel());
-
-        // call onCancel() when cross is clicked
+        // call onOK() when cross is clicked
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
-                onCancel();
+                onOK();
             }
         });
 
-        // call onCancel() on ESCAPE
-        contentPane.registerKeyboardAction(e -> onCancel(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-        Stream<ListItem> countries = Arrays.asList(Locale.getISOCountries()).stream().map(key -> new ListItem(key, new Locale("", key).getDisplayCountry()));
+        // call onOK() on ESCAPE
+        contentPane.registerKeyboardAction(e -> onOK(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+
+
+        List<Locale> availableLocales = Arrays.asList(Locale.getAvailableLocales());
+        Stream<String> countries = availableLocales.stream().map(Locale::getCountry);
         countries.forEach(mCountryComboBox::addItem);
 
-        Stream<ListItem> languages = Arrays.asList(Locale.getAvailableLocales()).stream().map(key -> new ListItem(key.getLanguage(), key.getDisplayLanguage()));
-        languages.forEach(mLanguageComboBox::addItem);
+        Stream<String> languages = availableLocales.stream().map(Locale::getLanguage);
+        languages.forEach(mLanguageComboBox::addItem);        
         
-        mLanguageComboBox.addItemListener(new ItemListener() {
-            @Override
-            public void itemStateChanged(ItemEvent e) {
-                ListItem item = (ListItem)e.getItem();
-                System.out.println(item.key + " -> " + item.label);
+        mCountryComboBox.setSelectedItem(Settings.getInstance().getLocaleCountry());
+        mLanguageComboBox.setSelectedItem(Settings.getInstance().getLocaleLanguage());
+
+        mCountryComboBox.addItemListener(e -> {
+            if(e.getStateChange() == 1) {
+                System.out.println("Got one...");
+                Settings.getInstance().setLocaleCountry((String) e.getItem());
             }
         });
-    }
-    
-    private static class ListItem{
-        public final String key;
-        public final String label;
 
-        private ListItem(String key, String label) {
-            this.key = key;
-            this.label = label;
-        }
-
-        @Override
-        public String toString() {
-            return label;
-        }
+        mLanguageComboBox.addItemListener(e -> {
+            if(e.getStateChange() == 1) {
+                System.out.println("Got one...");
+                Settings.getInstance().setLocaleLanguage((String) e.getItem());
+            }
+        });
     }
 
     private void onOK() {
-// add your code here
-        dispose();
-    }
-
-    private void onCancel() {
-// add your code here if necessary
+        // add your code here
         dispose();
     }
 
     public static void open() {
         SettingsDialog dialog = new SettingsDialog();
+        dialog.setTitle("JBake UI - Settings");
+        dialog.setIconImage(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB_PRE));
         dialog.pack();
         dialog.setSize(new Dimension(500, 300));
         dialog.setVisible(true);
