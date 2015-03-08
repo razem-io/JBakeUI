@@ -1,11 +1,10 @@
-package com.jbake.ui;
+package com.jbake.ui.settings;
 
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.HTreeMap;
 import org.mapdb.Serializer;
 
-import javax.swing.*;
 import java.io.File;
 
 /**
@@ -23,22 +22,22 @@ public class Settings {
     
     private static Settings savedInstance;
     
-    DB db;
-    HTreeMap<String, String> settings;
+    private DB db;
+    private HTreeMap<String, String> settings;
     
     private Settings(){
         File data = new File("data");
         if(!data.exists() && !data.mkdirs()){
-            JOptionPane.showMessageDialog(null, "Wasn't able to create settings folder. Settings will not be saved.", "ERROR", JOptionPane.ERROR_MESSAGE);
+            System.out.println("Wasn't able to create settings folder. Settings will not be saved on exit.");
             db = DBMaker.newMemoryDB().closeOnJvmShutdown().make();
         }else{
-            db = DBMaker.newFileDB(new File("data/settings")).closeOnJvmShutdown().asyncWriteEnable().make();
+            db = DBMaker.newFileDB(new File("data/settings")).closeOnJvmShutdown().make();
         }
         
         settings = db.createHashMap("settings")
                 .keySerializer(Serializer.STRING)
                 .valueSerializer(Serializer.STRING)
-                .makeOrGet();        
+                .makeOrGet();
     }
     
     public static Settings getInstance(){
@@ -48,9 +47,13 @@ public class Settings {
         return savedInstance;
     }
     
-    public void setJBakeFolderPath(File jBakeFolder){
+    public static void close(){
+        getInstance().db.commit();
+        getInstance().db.close();
+    }
+    
+    public void setJBakeFolder(File jBakeFolder){
         settings.put(DB_JBAKE_FOLDER_KEY, jBakeFolder.getAbsolutePath());
-        db.commit();
     }
 
     public File getJBakeFolderPath(){
@@ -58,9 +61,8 @@ public class Settings {
         return jBakeFolderString == null ? null : new File(jBakeFolderString);
     }
 
-    public void setSourceFolderPath(File sourceFolder){
+    public void setSourceFolder(File sourceFolder){
         settings.put(DB_SOURCE_FOLDER_KEY, sourceFolder.getAbsolutePath());
-        db.commit();
     }
 
     public File getSourceFolderPath(){
@@ -68,9 +70,8 @@ public class Settings {
         return sourceFolderString == null ? null : new File(sourceFolderString);
     }
 
-    public void setDestinationFolderPath(File destinationFolder){
+    public void setDestinationFolder(File destinationFolder){
         settings.put(DB_DESTINATION_FOLDER_KEY, destinationFolder.getAbsolutePath());
-        db.commit();
     }
 
     public File getDestinationFolderPath(){
@@ -85,7 +86,6 @@ public class Settings {
 
     public void setLocaleCountry(String countryString){
         settings.put(DB_LOCALE_COUNTRY, countryString);
-        db.commit();
     }
 
     public String getLocaleLanguage(){
@@ -95,6 +95,5 @@ public class Settings {
 
     public void setLocaleLanguage(String languageString){
         settings.put(DB_LOCALE_LANGUAGE, languageString);
-        db.commit();
     }
 }
