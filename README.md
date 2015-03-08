@@ -1,7 +1,7 @@
 # JBakeUI
 A simple UI for JBake. Please note the software is still in the early stages. Expect thunderstorms and wild fire!
 
-<div style="text-align:center"><img src ="http://razem.io/projects/JBakeUI/screens/20150304_JBakeUI.png" /></div>
+<div style="text-align:center"><img src ="http://razem.io/projects/JBakeUI/screens/20150308_JBakeUI.png" /></div>
 
 # Requirements
 * Java Runtime 1.8+
@@ -10,16 +10,12 @@ A simple UI for JBake. Please note the software is still in the early stages. Ex
 # Usage
 You can download a compiled version of JBakeUI [here](https://github.com/razem-io/JBakeUI/wiki/Download).
 
-Once downloaded extract the archieve and navigate to the bin folder. Depending on your system start ````JBakeUI.bat``` (Windows) or ```JBakeUI``` (Linux and Mac).
-
-When you start the UI for the first time you will be asked for two folders:
-* JBake distribution folder (where jbake-core.jar is located)
-* Source folder of your blog (can be empty)
+Once downloaded extract the archieve and navigate to the bin folder. Depending on your system start ```JBakeUI.bat``` (Windows) or ```JBakeUI``` (Linux and Mac).
 
 After the initial configuration the information will be saved and you don't need to worry about it anymore. Multi 
 project support is planned.
 
-If everything is configured correctly, you may now bake your site. Once the server is started you can open a browser and navigate to http://localhost:8820 to have a quick preview of your blog/site.
+If everything is configured correctly, you may now bake your site and start the server. Once the server is started you can open a browser and navigate to http://localhost:8820 to have a quick preview of your blog/site.
 
 #Build instructions
 This project uses gradle. Open a terminal navigate to the root directory of the project and execute ```gradle distZip```. You then will find a brand new copy of JBakeUI in ```build/distributions/JBakeUI-*.zip```.
