@@ -184,7 +184,7 @@ public class JBakeConnector {
                     //TODO: Implement template selection
 
                     ZipUtil.unpack(
-                            new File(mJBakeSourceFolder.getAbsolutePath() + "\\example_project_freemarker.zip"),
+                            new File(mJBakeSourceFolder.getAbsolutePath() + "/example_project_freemarker.zip"),
                             mSourceFolder
                     );
                 }
