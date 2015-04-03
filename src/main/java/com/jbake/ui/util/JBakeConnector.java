@@ -1,21 +1,29 @@
 package com.jbake.ui.util;
 
 import com.jbake.ui.settings.Settings;
+import org.apache.commons.configuration.CompositeConfiguration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.DefaultHandler;
+import org.eclipse.jetty.server.handler.HandlerList;
+import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.jbake.app.ConfigUtil;
+import org.jbake.app.Oven;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeroturnaround.zip.ZipUtil;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Created by julianliebl on 07.03.2015.
  */
 public class JBakeConnector {
+    private final static Logger LOGGER = LoggerFactory.getLogger(JBakeConnector.class);
+    
     private static JBakeConnector mStaticInstance;
-    private static Process mServerProcess;
+    private static Server mServer;
 
     
     private JBakeConnector(){}
@@ -58,10 +66,14 @@ public class JBakeConnector {
     }
     
     private void stopServerLocal(){
-        if (mServerProcess != null) {
+        if (mServer != null) {            
             System.out.println("Stopping the server...");
-            mServerProcess.destroyForcibly();
-            mServerProcess = null;
+            try {
+                mServer.stop();
+                mServer = null;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
             System.out.println("Done!");
         }
     }
@@ -74,52 +86,42 @@ public class JBakeConnector {
         runInBackground(new StatusTask() {
             @Override
             void execute() {
-                if (mServerProcess != null) {
+                if (mServer != null) {
                     stopServerLocal();
                 } else {
                     listener.onStatusChange(CommandStatus.STARTING);
                     
                     File mDestinationFolder = Settings.getInstance().getDestinationFolderPath();
-                    File mJBakeSourceFolder = Settings.getInstance().getJBakeFolderPath();
-                    
-                    System.out.println("Starting the server by using the following command:");
-                    ProcessBuilder pb = new ProcessBuilder("java", "-jar", "jbake-core.jar", "-s", mDestinationFolder.getAbsolutePath());
-                    pb.command().stream().forEach(commandPart -> System.out.print(commandPart + " "));
-                    System.out.println();
-                    pb.directory(mJBakeSourceFolder);
+
+                    final CompositeConfiguration config = getConfig();
+                    if(config == null) {
+                        return;
+                    }
+
+                    String port = config.getString(ConfigUtil.Keys.SERVER_PORT);
+                    String path = mDestinationFolder.getAbsolutePath();
+
+                    mServer = new Server();
+                    SelectChannelConnector connector = new SelectChannelConnector();
+                    connector.setPort(Integer.parseInt(port));
+                    mServer.addConnector(connector);
+
+                    ResourceHandler resource_handler = new ResourceHandler();
+                    resource_handler.setDirectoriesListed(true);
+                    resource_handler.setWelcomeFiles(new String[]{ "index.html" });
+
+                    resource_handler.setResourceBase(path);
+
+                    HandlerList handlers = new HandlerList();
+                    handlers.setHandlers(new Handler[] { resource_handler, new DefaultHandler() });
+                    mServer.setHandler(handlers);
+
+                    LOGGER.info("Serving out contents of: [{}] on http://localhost:{}/", path, port);
+                    LOGGER.info("(To stop server hit CTRL-C)");
 
                     try {
-                        mServerProcess = pb.start();
-
-                        InputStream stdoutStream = mServerProcess.getInputStream();
-                        InputStream stderrStream = mServerProcess.getErrorStream();
-
-                        final BufferedReader stdoutReader = new BufferedReader(
-                                new InputStreamReader(stdoutStream));
-                        final BufferedReader stderrReader = new BufferedReader(
-                                new InputStreamReader(stderrStream));
-
-                        String stdoutLine;
-                        String stderrLine = null;
-                        while ((stdoutLine = stdoutReader.readLine()) != null || (stderrLine = stderrReader.readLine()) != null) {
-                            if (stdoutLine != null) {
-                                System.out.println(stdoutLine);
-                            }
-                            if (stderrLine != null) {
-                                System.out.println(stderrLine);
-                            }
-                        }
-
-                        stdoutReader.close();
-                        stdoutStream.close();
-
-                        stderrReader.close();
-                        stderrStream.close();
-
-                        if(mServerProcess != null){
-                            mServerProcess.waitFor();
-                            mServerProcess.destroy();
-                        }
+                        mServer.start();
+                        mServer.join();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -138,46 +140,30 @@ public class JBakeConnector {
     }
     
     //TODO: remove dependency on Settings with chained commands
-    private void bakeLocal(CommandStatusListener listener){
+    private void bakeLocal(CommandStatusListener listener) {
         runInBackground(new StatusTask() {
             @Override
             void execute() {
                 listener.onStatusChange(CommandStatus.STARTING);
-                
-                File mSourceFolder      = Settings.getInstance().getSourceFolderPath();
+
+                File mSourceFolder = Settings.getInstance().getSourceFolderPath();
                 File mDestinationFolder = Settings.getInstance().getDestinationFolderPath();
                 File mJBakeSourceFolder = Settings.getInstance().getJBakeFolderPath();
-                
-                if(mSourceFolder == null){
+
+                if (mSourceFolder == null) {
                     System.out.println("ERROR: Please select a valid source directory!");
                     return;
                 }
 
-                if(mDestinationFolder == null){
+                if (mDestinationFolder == null) {
                     System.out.println("ERROR: Please select a valid destination directory!");
                     return;
                 }
 
-                if(mJBakeSourceFolder == null){
+                if (mJBakeSourceFolder == null) {
                     System.out.println("ERROR: Please select a valid JBake directory!");
                     return;
                 }
-
-                System.out.println("Starting to bake by using the following command:");
-                
-                List<String> args = new ArrayList<>();
-                //default
-                args.add("java");
-                args.add("-jar");
-
-                //locale
-                String localeCountry = Settings.getInstance().getLocaleCountry();
-                if (localeCountry != null) args.add("-Duser.country=" + localeCountry);
-                String localeLanguage = Settings.getInstance().getLocaleLanguage();
-                if (localeLanguage != null) args.add("-Duser.language=" + localeLanguage);
-
-                //JBake
-                args.add("jbake-core.jar");
 
                 //folders
                 if (mSourceFolder.list() == null || mSourceFolder.list().length == 0) {
@@ -189,47 +175,20 @@ public class JBakeConnector {
                     );
                 }
 
-                args.add("-b");
-                args.add(mSourceFolder.getAbsolutePath());
-                args.add(mDestinationFolder.getAbsolutePath());
+                System.out.println("Starting to bake by using the following command:");
 
-                ProcessBuilder pb = new ProcessBuilder(args.toArray(new String[args.size()]));
-                pb.directory(mJBakeSourceFolder);
-                pb.command().stream().forEach(commandPart -> System.out.print(commandPart + " "));
-
-                try {
-                    Process process = pb.start();
-
-                    InputStream stdoutStream = process.getInputStream();
-                    InputStream stderrStream = process.getErrorStream();
-
-                    final BufferedReader stdoutReader = new BufferedReader(
-                            new InputStreamReader(stdoutStream));
-                    final BufferedReader stderrReader = new BufferedReader(
-                            new InputStreamReader(stderrStream));
-
-                    String stdoutLine;
-                    String stderrLine = null;
-                    while ((stdoutLine = stdoutReader.readLine()) != null || (stderrLine = stderrReader.readLine()) != null) {
-                        if (stdoutLine != null) {
-                            System.out.println(stdoutLine);
-                        }
-                        if (stderrLine != null) {
-                            System.out.println(stderrLine);
-                        }
-                    }
-
-                    stdoutReader.close();
-                    stdoutStream.close();
-
-                    stderrReader.close();
-                    stderrStream.close();
-
-                    process.waitFor();
-                    process.destroy();
-                } catch (Exception e) {
-                    e.printStackTrace();
+                final CompositeConfiguration config = getConfig();                
+                if(config == null) {
+                    return;
                 }
+                
+
+                System.out.println("JBake " + config.getString(ConfigUtil.Keys.VERSION) + " (" + config.getString(ConfigUtil.Keys.BUILD_TIMESTAMP) + ") [http://jbake.org]");
+                System.out.println();
+
+                Oven oven = new Oven(mSourceFolder, mDestinationFolder, config, true);
+                oven.setupPaths();
+                oven.bake();
             }
 
             @Override
@@ -237,8 +196,17 @@ public class JBakeConnector {
                 listener.onStatusChange(CommandStatus.FINISHED);
             }
         });
+    }
         
+    private CompositeConfiguration getConfig(){
+        CompositeConfiguration config = null;
         
-        
+        try {
+            config = ConfigUtil.load(Settings.getInstance().getSourceFolderPath());
+        } catch (final ConfigurationException e) {
+            System.out.println("Configuration error: " + e.getMessage());
+        }
+
+        return config;
     }
 }

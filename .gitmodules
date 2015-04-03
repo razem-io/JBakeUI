@@ -1,0 +1,3 @@
+[submodule "submodules/jbake"]
+	path = submodules/jbake
+	url = https://github.com/jbake-org/jbake
